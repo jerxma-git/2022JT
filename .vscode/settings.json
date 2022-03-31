@@ -1,0 +1,14 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "info.kgeorgiy.java.advanced.implementor.jar",
+        "hamcrest-core-1.3.jar",
+        "info.kgeorgiy.java.advanced.arrayset.jar",
+        "info.kgeorgiy.java.advanced.base.jar",
+        "info.kgeorgiy.java.advanced.student.jar",
+        "info.kgeorgiy.java.advanced.walk.jar",
+        "jsoup-1.8.1.jar",
+        "junit-4.11.jar",
+        "quickcheck-0.6.jar"
+    ]
+}
