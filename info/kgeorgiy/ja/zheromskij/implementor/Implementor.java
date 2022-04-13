@@ -46,11 +46,22 @@ public class Implementor implements Impler {
         // if (token.isEnum()) {
         //     throw new ImplerException("Can't implement Enums");
         // }
+        if (Modifier.isPrivate(token.getModifiers())) {
+            throw new ImplerException("Can't implement private class/interface");
+        }
         if (token == Enum.class) {
             throw new ImplerException("Can't implement java.lang.Enum");
         }
         if (Modifier.isFinal(token.getModifiers())) {
             throw new ImplerException("Can't implement final classes");
+        }
+
+        if (Arrays.stream(token.getDeclaredMethods()).allMatch(m -> Modifier.isStatic(m.getModifiers()))) {
+            throw new ImplerException("Can't implement utility classes");
+        }
+
+        if (token.isInterface() && token.getDeclaredMethods().length == 0) {
+            throw new ImplerException("Can't implement methodless interfaces");
         }
         
 
@@ -128,11 +139,17 @@ public class Implementor implements Impler {
             + ";" + EOL + TAB + "}" + EOL;
     }
 
+
+    private static String exceptionsRepr(Executable e) {
+        String repr = Arrays.stream(e.getExceptionTypes()).map(Class::getCanonicalName).collect(Collectors.joining(", "));
+        return repr.isEmpty() ? "" : "throws " + repr;
+    }
+
     private static String signatureRepr(Executable e) {
         return (e instanceof Method 
                 ? e.getName() 
                 : getImplName(e.getDeclaringClass())) 
-            + parametersRepr(e);
+            + parametersRepr(e) + exceptionsRepr(e);
     }
 
     private static String getExecutableCode(Executable e) {
