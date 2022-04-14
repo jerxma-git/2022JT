@@ -1,6 +1,7 @@
 package info.kgeorgiy.ja.zheromskij.concurrent;
 
 import info.kgeorgiy.java.advanced.concurrent.ListIP;
+import info.kgeorgiy.java.advanced.mapper.ParallelMapper;
 
 import java.util.*;
 import java.util.function.BinaryOperator;
@@ -11,6 +12,16 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class IterativeParallelism implements ListIP {
+
+    private ParallelMapper mapper;
+
+    public IterativeParallelism() {
+        this(null);
+    }
+
+    public IterativeParallelism(ParallelMapper mapper) {
+        this.mapper = mapper;
+    }
 
     private static <T> List<Stream<? extends T>> splitList(final List<? extends T> vals, final int parts) {
         final List<Stream<? extends T>> res = new ArrayList<>();
@@ -30,7 +41,9 @@ public class IterativeParallelism implements ListIP {
 
         final List<Thread> workers = new ArrayList<>();
         // :NOTE: Не работает для пустых списков
-        return combiner.apply(map(mapper, workers, splitList(values, Math.min(threads, values.size()))));
+        List<Stream<? extends T>> split = splitList(values, Math.min(threads, values.size()));
+        List<R> results = this.mapper == null ? map(mapper, workers, split) : this.mapper.map(mapper, split);
+        return combiner.apply(results);
     }
 
    
