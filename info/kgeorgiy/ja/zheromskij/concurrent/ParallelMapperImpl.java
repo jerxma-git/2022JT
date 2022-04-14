@@ -4,14 +4,12 @@ import info.kgeorgiy.java.advanced.mapper.ParallelMapper;
 
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class ParallelMapperImpl implements ParallelMapper {
     private final List<Thread> workers;
-    // :NOTE: LinkedList?
-    private final Queue<Runnable> tasks = new ArrayDeque<>();
+    private final LinkedList<Runnable> tasks = new LinkedList<>();
 
     public ParallelMapperImpl(final int threads) {
         final Runnable workload = () -> {
@@ -25,8 +23,7 @@ public class ParallelMapperImpl implements ParallelMapper {
                 Thread.currentThread().interrupt();
             }
         };
-        // :NOTE: toCollection(ArrayList::new)
-        workers = Stream.generate(() -> new Thread(workload)).limit(threads).collect(Collectors.toList());
+        workers = Stream.generate(() -> new Thread(workload)).limit(threads).toList();
         workers.forEach(Thread::start);
 
     }
@@ -36,7 +33,9 @@ public class ParallelMapperImpl implements ParallelMapper {
             while (tasks.isEmpty()) {
                 tasks.wait();
             }
-            return tasks.poll();
+            Runnable task = tasks.poll();
+            tasks.notify();
+            return task;
         }
     }
 
@@ -46,8 +45,7 @@ public class ParallelMapperImpl implements ParallelMapper {
         final Counter cnt = new Counter(args.size());
         final RuntimeException rt = new RuntimeException("RT thrown");
 
-        // :NOTE: IntStream
-        IntStream.range(0, args.size()).map(index -> {
+        IntStream.range(0, args.size()).forEach(index -> {
             synchronized (tasks) {
                 tasks.add(() -> {
                     final T arg = args.get(index);
@@ -59,7 +57,6 @@ public class ParallelMapperImpl implements ParallelMapper {
                             rt.addSuppressed(e);
                         }
                     }
-                    // :NOTE: Несинхронизированная запись
                     synchronized (results) {
                         results.set(index, mapped);
                         cnt.inc();
@@ -67,29 +64,8 @@ public class ParallelMapperImpl implements ParallelMapper {
                 });
                 tasks.notify();
             }
-            return 0;
         });
 
-        // for (int i = 0; i < args.size(); i++) {
-        //     final int index = i;
-        //     synchronized (tasks) {
-        //         tasks.add(() -> {
-        //             final T arg = args.get(index);
-        //             R mapped = null;
-        //             try {
-        //                 mapped = f.apply(arg);
-        //             } catch (final RuntimeException e) {
-        //                 synchronized (rt) {
-        //                     rt.addSuppressed(e);
-        //                 }
-        //             }
-        //             // :NOTE: Несинхронизированная запись
-        //             results.set(index, mapped);
-        //             cnt.inc();
-        //         });
-        //         tasks.notify();
-        //     }
-        // }
         if (rt.getSuppressed().length != 0) {
             throw rt;
         }
@@ -97,7 +73,6 @@ public class ParallelMapperImpl implements ParallelMapper {
         return results;
     }
 
-    // :NOTE: "Подвисшие" задания
     @Override
     public void close() {
         workers.forEach(Thread::interrupt);
@@ -107,30 +82,22 @@ public class ParallelMapperImpl implements ParallelMapper {
             } catch (final InterruptedException ignored) {
 
             }
+
         }
     }
 
     private static class Counter {
         private int curr;
         private final int to;
-        private boolean broken;
 
         public Counter(final int to) {
             this.curr = 0;
             this.to = to;
         }
 
-        public void breakAndInc() {
-            broken = true;
-            inc();
-        }
-        
-        public void inc() {
+        public synchronized void inc() {
             if (++curr >= to) {
-                // :NOTE: synchronized (this)
-                synchronized (this) {
-                    this.notify();
-                }
+                this.notify();
             }
         }
 

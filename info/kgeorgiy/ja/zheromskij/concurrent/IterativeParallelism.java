@@ -30,6 +30,9 @@ public class IterativeParallelism implements ListIP {
             // :NOTE: Не равномерное распределение
             res.add(vals.subList(i, Math.min(i + partSize, vals.size())).stream());
         }
+
+       
+        
         return res;
     }
 
