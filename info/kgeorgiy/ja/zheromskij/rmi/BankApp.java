@@ -1,7 +1,9 @@
 package info.kgeorgiy.ja.zheromskij.rmi;
 
 import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Arrays;
 import java.util.Objects;
@@ -10,7 +12,9 @@ public class BankApp {
     
     public static void main(String[] args) {
 
-
+        System.out.println("NIGGER");
+        System.out.println("NIGGER");
+        System.out.println("NIGGER");
         if (args == null || args.length != 5) {
             System.out.println("Args: name surname passport accountID newAmount");
         }
@@ -26,7 +30,8 @@ public class BankApp {
         int newAmount = Integer.parseInt(args[4]);
 
         try {
-            Bank bank = (Bank) Naming.lookup("///bank");
+            Registry registry = LocateRegistry.getRegistry(null, 1099);
+            Bank bank = (Bank) registry.lookup("//localhost/bank");
             RemotePerson person = bank.getRemotePerson(passport);
             if (person == null) {
                 person = bank.createPerson(name, surname, passport);
@@ -42,8 +47,11 @@ public class BankApp {
         
         } catch (RemoteException e) {
             System.err.println("Failed to receive the person");
+        } catch (NotBoundException e) {
+            System.out.println("Bank isn't bound");
         } catch (Exception e) {
-            // TODO: exceps
+            System.out.println("бедомба жесть");
+            e.printStackTrace();
         }
 
 
