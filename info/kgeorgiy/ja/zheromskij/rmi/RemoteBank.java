@@ -91,7 +91,7 @@ public class RemoteBank implements Bank {
         String subId = parts[1];
         RemotePerson person = getRemotePerson(passport);
         if (person == null) {
-            System.out.println("Incorrect uid");
+            System.out.println("Incorrect person uid");
             return null;
         }
         return person.getAccount(subId);

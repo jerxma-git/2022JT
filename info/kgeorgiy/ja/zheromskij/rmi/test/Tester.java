@@ -10,6 +10,8 @@ import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
+import org.junit.platform.launcher.listeners.TestExecutionSummary.Failure;
+
 
 public class Tester {
     public static void main(String[] args) {
@@ -24,12 +26,20 @@ public class Tester {
         launcher.execute(request);
         
         TestExecutionSummary summary = listener.getSummary();
+        
+        for (Failure f : summary.getFailures()) {
+            f.getException().printStackTrace();
+        }
+
         summary.printTo(new PrintWriter(System.out));
+
 
         if (summary.getFailures().isEmpty()) {
             System.exit(0);
         } else {
             System.exit(1);
         }
+
+
     }
 }
