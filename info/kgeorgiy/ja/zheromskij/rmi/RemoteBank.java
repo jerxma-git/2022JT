@@ -23,7 +23,7 @@ public class RemoteBank implements Bank {
                 UnicastRemoteObject.exportObject(rp, port);
             } catch (RemoteException e) {
                 // TODO: remove bedomba
-                System.err.println("бедомба");
+                System.err.println("Error: person export failed");
                 return null;
             }
             return rp;
@@ -42,19 +42,31 @@ public class RemoteBank implements Bank {
         return rp == null ? null : rp.localCopy();
     }
 
-    public RemoteAccount createAccount(String id) {
+
+    private String[] parseId(String id) {
         String[] parts = id.split(":");
         if (parts.length != 2) {
             System.err.println("Invalid id: " + id);
             return null;
         }
+        return parts;
+    }
+
+    @Override
+    public Account getOrCreateAccount(String id) {
+        String[] parts = parseId(id);
+        if (parts == null) {
+            return null;
+        }
         String passport = parts[0];
         String subId = parts[1];
-        RemotePerson person = persons.get(passport);
+        RemotePerson person = getRemotePerson(passport);
+
         if (person == null) {
             System.err.println("Person with passport " + passport + " wasn't found");
             return null;
         }
+
         RemoteAccount acc = accounts.computeIfAbsent(id, ignored -> {
             RemoteAccount racc = new RemoteAccount(id);
             try {
@@ -69,20 +81,22 @@ public class RemoteBank implements Bank {
         return acc;
     }
 
-
+    @Override
     public Account getAccount(String id) {
-        String[] parts = id.split(":");
-        if (parts.length != 2) {
-            System.err.println("Invalid id: " + id);
+        String[] parts = parseId(id);
+        if (parts == null) {
             return null;
         }
         String passport = parts[0];
         String subId = parts[1];
-        RemotePerson person = persons.get(passport);
+        RemotePerson person = getRemotePerson(passport);
         if (person == null) {
             System.out.println("Incorrect uid");
             return null;
         }
         return person.getAccount(subId);
     }
+
+
+   
 }

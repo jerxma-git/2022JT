@@ -16,5 +16,6 @@ public interface Bank extends Remote {
     RemotePerson createPerson(String name, String surname, String passport) throws RemoteException;
 
     Account getAccount(String id) throws RemoteException;
+    Account getOrCreateAccount(String id) throws RemoteException;
 
 }

@@ -32,16 +32,16 @@ public class BankApp {
                 person = bank.createPerson(name, surname, passport);
                 System.out.println("No person with passport " + passport + " was found. Creating a new person");
             }
-            Account acc = person.assignAccount(new RemoteAccount(accId), accId.split(":")[1]);
             try {
+                Account acc = bank.getOrCreateAccount(accId);
                 acc.setAmount(newAmount);
-                System.out.println("New amount: " +acc.getAmount());
+                System.out.println("New amount: " + acc.getAmount());
             } catch (RemoteException e) {
-                System.err.println("Couldn't change");
+                System.err.println("Couldn't change the amount");
             }
         
         } catch (RemoteException e) {
-
+            System.err.println("Failed to receive the person");
         } catch (Exception e) {
             // TODO: exceps
         }
