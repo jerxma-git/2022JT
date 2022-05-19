@@ -7,6 +7,7 @@ import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -26,11 +27,18 @@ public class IterativeParallelism implements ListIP {
     private static <T> List<Stream<? extends T>> splitList(final List<? extends T> vals, final int parts) {
         final List<Stream<? extends T>> res = new ArrayList<>();
         final int partSize = vals.size() / parts;
-        for (int i = 0; i < vals.size(); i += partSize) {
-            // :NOTE: Не равномерное распределение
-            res.add(vals.subList(i, Math.min(i + partSize, vals.size())).stream());
+        // for (int i = 0; i < vals.size(); i += partSize) {
+        //     // :NOTE: Не равномерное распределение
+        //     res.add(vals.subList(i, Math.min(i + partSize, vals.size())).stream());
+        // }
+        int rem = vals.size() % partSize;
+        int step = partSize + (rem > 0 ? 1 : 0);
+        for (int i = 0; i < vals.size(); i += step, rem--) {
+            if (rem == 0) {
+                step = partSize;
+            }
+            res.add(vals.subList(i, i + step).stream());
         }
-
        
         
         return res;
@@ -44,6 +52,7 @@ public class IterativeParallelism implements ListIP {
 
         final List<Thread> workers = new ArrayList<>();
         // :NOTE: Не работает для пустых списков
+        // теперь работает
         List<Stream<? extends T>> split = splitList(values, Math.min(threads, values.size()));
         List<R> results = this.mapper == null ? map(mapper, workers, split) : this.mapper.map(mapper, split);
         return combiner.apply(results);
@@ -52,20 +61,32 @@ public class IterativeParallelism implements ListIP {
    
     private <T, R> List<R> map(final Function<Stream<? extends T>, R> mapper, final List<Thread> workers, final List<Stream<? extends T>> split) throws InterruptedException {
         final List<R> results = new ArrayList<>(Collections.nCopies(split.size(), null));
-        IntStream.range(0, split.size()).forEach(i -> {
-            final Thread worker = new Thread(() -> results.set(i, mapper.apply(split.get(i))));
-            // :NOTE: Stream.peek + toList
-            workers.add(worker);
-            worker.start();
-        });
+        // IntStream.range(0, split.size()).forEach(i -> {
+        //     final Thread worker = new Thread(() -> results.set(i, mapper.apply(split.get(i))));
+        //     // :NOTE: Stream.peek + toList
+        //     workers.add(worker);
+        //     worker.start();
+        // });
+
+        workers.addAll(
+            IntStream.range(0, split.size())
+                .mapToObj(i -> new Thread(() -> results.set(i, mapper.apply(split.get(i)))))
+                .peek(Thread::start)
+                .toList()
+        );
+
 
         final List<InterruptedException> exceptions = new ArrayList<>();
         for (final Thread worker : workers) {
-            try {
-                // :NOTE: Утечка  потока
-                worker.join();
-            } catch (final InterruptedException e) {
-                exceptions.add(e);
+            while (true) {
+                try {
+                    // :NOTE: Утечка  потока
+                    worker.join();
+                    break;
+                } catch (final InterruptedException e) {
+                    exceptions.add(e);
+                    // нужно ли?
+                }
             }
         }
 
@@ -79,9 +100,15 @@ public class IterativeParallelism implements ListIP {
 
 
 
-    private <T, U> U parallelReduction(final List<? extends T> values, final int threads, final Function<Stream<? extends T>, U> mapper, final BinaryOperator<U> reducer) throws InterruptedException {
-        return parallelFun(values, threads, mapper, list -> list.stream().reduce(reducer).get());
+    private <T, U> Optional<U> parallelReduction(final List<? extends T> values, final int threads, final Function<Stream<? extends T>, U> mapper, final BinaryOperator<U> reducer) throws InterruptedException {
+        return parallelFun(values, threads, mapper, list -> list.stream().reduce(reducer));
     }
+
+    private <T, U> List<U> combFun(final int threads, final List<? extends T> values, final Function<Stream<? extends T>, Stream<? extends U>> mapper) throws InterruptedException {
+        return parallelReduction(values, threads, mapper, Stream::concat).orElse(Stream.of()).collect(Collectors.toList());
+    }
+
+    
 
 
 
@@ -101,7 +128,7 @@ public class IterativeParallelism implements ListIP {
         if (values.isEmpty()) {
             throw new NoSuchElementException("No values given");
         }
-        return parallelReduction(values, threads, stream -> stream.max(comparator).get(), BinaryOperator.maxBy(comparator));
+        return parallelReduction(values, threads, stream -> stream.max(comparator).get(), BinaryOperator.maxBy(comparator)).get();
     }
 
     
@@ -131,7 +158,7 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T> boolean any(final int threads, final List<? extends T> values, final Predicate<? super T> predicate) throws InterruptedException {
-        return parallelReduction(values, threads, stream -> stream.anyMatch(predicate), Boolean::logicalOr);
+        return parallelReduction(values, threads, stream -> stream.anyMatch(predicate), Boolean::logicalOr).orElse(false);
     }
 
     
@@ -159,10 +186,7 @@ public class IterativeParallelism implements ListIP {
      */
     public <T> List<T> filter(final int threads, final List<? extends T> values, final Predicate<? super T> predicate) throws InterruptedException {
         // :NOTE: Похоже на map
-        return parallelFun(values, 
-                threads, 
-                stream -> stream.filter(predicate), 
-                list -> list.stream().reduce(Stream::concat).get().collect(Collectors.toList()));
+        return combFun(threads, values, stream -> stream.filter(predicate));
     }
 
 
@@ -176,13 +200,12 @@ public class IterativeParallelism implements ListIP {
      * @throws InterruptedException if the execution of any thread was interrupted
      */
     public <T, U> List<U> map(final int threads, final List<? extends T> values, final Function<? super T, ? extends U> f) throws InterruptedException {
-        return parallelFun(values, 
-                threads, 
-                stream -> stream.map(f), 
-                list -> list.stream().reduce(Stream::concat).get().collect(Collectors.toList()));
+        return combFun(threads, values, stream -> stream.map(f));
     }
 
     
+
+
     /** 
      * Concatenates string representations of all elements of the provided list into a single String. Representations aren't separated by any character and appear in the string in the same order as they appear in the provided list.
      * @param threads maximum number of threads to use for evaluation

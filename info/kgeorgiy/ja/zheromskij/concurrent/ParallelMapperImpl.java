@@ -9,7 +9,9 @@ import java.util.stream.Stream;
 
 public class ParallelMapperImpl implements ParallelMapper {
     private final List<Thread> workers;
-    private final LinkedList<Runnable> tasks = new LinkedList<>();
+    // :NOTE: LinkedList
+    // private final LinkedList<Runnable> tasks = new LinkedList<>();
+    private final Queue<Runnable> tasks = new ArrayDeque<>();
 
     public ParallelMapperImpl(final int threads) {
         final Runnable workload = () -> {
@@ -23,9 +25,14 @@ public class ParallelMapperImpl implements ParallelMapper {
                 Thread.currentThread().interrupt();
             }
         };
-        workers = Stream.generate(() -> new Thread(workload)).limit(threads).toList();
-        workers.forEach(Thread::start);
 
+        // :NOTE: .peek
+        // workers = Stream.generate(() -> new Thread(workload)).limit(threads).toList();
+        // workers.forEach(Thread::start);
+        workers = Stream.generate(() -> new Thread(workload))
+                .limit(threads)
+                .peek(Thread::start)
+                .toList();
     }
 
     private Runnable getTask() throws InterruptedException {
@@ -33,9 +40,7 @@ public class ParallelMapperImpl implements ParallelMapper {
             while (tasks.isEmpty()) {
                 tasks.wait();
             }
-            Runnable task = tasks.poll();
-            tasks.notify();
-            return task;
+            return tasks.poll();
         }
     }
 
@@ -43,8 +48,8 @@ public class ParallelMapperImpl implements ParallelMapper {
     public <T, R> List<R> map(final Function<? super T, ? extends R> f, final List<? extends T> args) throws InterruptedException {
         final List<R> results = new ArrayList<>(Collections.nCopies(args.size(), null));
         final Counter cnt = new Counter(args.size());
-        final RuntimeException rt = new RuntimeException("RT thrown");
-
+        // final RuntimeException rt = new RuntimeException("RT thrown");
+        final List<RuntimeException> es = new ArrayList<>();
         IntStream.range(0, args.size()).forEach(index -> {
             synchronized (tasks) {
                 tasks.add(() -> {
@@ -52,22 +57,30 @@ public class ParallelMapperImpl implements ParallelMapper {
                     R mapped = null;
                     try {
                         mapped = f.apply(arg);
+                        // :NOTE: Пробрасывать исходное
                     } catch (final RuntimeException e) {
-                        synchronized (rt) {
-                            rt.addSuppressed(e);
+                        // rt.addSuppressed(e);
+                        
+                        synchronized (es) {
+                            es.add(e);
                         }
                     }
+                    // :NOTE: Лишняя синхронизация
+                    // перенес cnt.inc();
                     synchronized (results) {
                         results.set(index, mapped);
-                        cnt.inc();
+                        // cnt.inc();
                     }
+                    cnt.inc();
                 });
                 tasks.notify();
             }
         });
 
-        if (rt.getSuppressed().length != 0) {
-            throw rt;
+        if (!es.isEmpty()) {
+            RuntimeException first = es.get(0);
+            es.subList(1, es.size()).forEach(first::addSuppressed);
+            throw first;
         }
         cnt.await();
         return results;
@@ -77,32 +90,34 @@ public class ParallelMapperImpl implements ParallelMapper {
     public void close() {
         workers.forEach(Thread::interrupt);
         for (final Thread thread : workers) {
-            try {
-                thread.join();
-            } catch (final InterruptedException ignored) {
-
+            while (true) {
+                try {
+                    thread.join();
+                    break;
+                } catch (final InterruptedException ignored) {
+    
+                }
             }
-
         }
     }
 
+    // :NOTE: Убывающий
+    // теперь убывающий
     private static class Counter {
-        private int curr;
-        private final int to;
+        private int cnt;
 
-        public Counter(final int to) {
-            this.curr = 0;
-            this.to = to;
+        public Counter(final int cnt) {
+            this.cnt = cnt;
         }
 
         public synchronized void inc() {
-            if (++curr >= to) {
+            if (--cnt <= 0) {
                 this.notify();
             }
         }
 
         private synchronized void await() throws InterruptedException {
-            while (curr < to) {
+            while (cnt > 0) {
                 wait();
             }
         }

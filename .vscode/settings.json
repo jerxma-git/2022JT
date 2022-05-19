@@ -9,6 +9,10 @@
         "info.kgeorgiy.java.advanced.walk.jar",
         "jsoup-1.8.1.jar",
         "junit-4.11.jar",
-        "quickcheck-0.6.jar"
+        "quickcheck-0.6.jar",
+        "info.kgeorgiy.ja.zheromskij.implementor.jar",
+        "info.kgeorgiy.java.advanced.concurrent.jar",
+        "info.kgeorgiy.java.advanced.crawler.jar",
+        "info.kgeorgiy.java.advanced.mapper.jar"
     ]
 }
