@@ -26,6 +26,7 @@ public class BankAppTest extends BaseTest{
     @BeforeEach
     void initBank() throws RemoteException{
         for (String[] args : data) {
+            System.out.println("created acc for " + args[0] + " " + args[1] + " with accId :" + args[3] + ":");
             bank.createPerson(args[0], args[1], args[2]);
             bank.getOrCreateAccount(args[3]);
         }
@@ -34,24 +35,26 @@ public class BankAppTest extends BaseTest{
     @Test
     void mainTest() throws RemoteException {
         BankApp.main(args1);
-        assertEquals(args1[4], bank.getAccount(args1[3]).getAmount());
-
+        assertEquals(Integer.parseInt(args1[4]), bank.getAccount(args1[3]).getAmount());
     }
 
 
-    // @Test
-    // void parallel() throws RemoteException, InterruptedException {
-    //     var pool = Executors.newFixedThreadPool(100);
-    //     for (int i = 0; i < 100; i++) {
-    //         pool.submit(() -> {
-    //             BankApp.main(args1);
-    //         });
-    //     }
-    //     pool.shutdown();
-    //     pool.awaitTermination(10, TimeUnit.SECONDS);
-    //     assertEquals(args1[4], bank.getRemotePerson(args1[2]).getAccount(args1[3]).getAmount());
-    // }
 
-    
+    @Test
+    void parallel() throws RemoteException, InterruptedException {
+        var pool = Executors.newFixedThreadPool(100);
+        for (int i = 0; i < 100; i++) {
+            pool.submit(() -> {
+                BankApp.main(args1);
+            });
+        }
+        pool.shutdown();
+        pool.awaitTermination(10, TimeUnit.SECONDS);
+        System.out.println("requesting acc for" + args1[2] + " with accId :" + args1[3] + ":");
+        System.out.println(bank.getRemotePerson(args1[2]));
+        
+        assertEquals(Integer.parseInt(args1[4]), bank.getRemotePerson(args1[2]).getAccount(args1[3]).getAmount());
+    }
+
     
 }

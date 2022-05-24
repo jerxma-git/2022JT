@@ -22,7 +22,6 @@ public class RemoteBank implements Bank {
             try {
                 UnicastRemoteObject.exportObject(rp, port);
             } catch (RemoteException e) {
-                // TODO: remove bedomba
                 System.err.println("Error: person export failed");
                 return null;
             }

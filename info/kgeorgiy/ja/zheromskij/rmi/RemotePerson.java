@@ -3,6 +3,8 @@ package info.kgeorgiy.ja.zheromskij.rmi;
 import java.rmi.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 public class RemotePerson extends AbstractPerson {
     
@@ -15,6 +17,11 @@ public class RemotePerson extends AbstractPerson {
 
     public LocalPerson localCopy() {
         return new LocalPerson(name, surname, passport);
+    }
+
+    @Override
+    public String toString() {
+        return "accs:" + this.accounts.keySet().stream().collect(Collectors.joining("_"));
     }
 
 

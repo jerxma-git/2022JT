@@ -26,6 +26,8 @@ public abstract class AbstractPerson implements Person {
         return accounts.putIfAbsent(subId, acc);
     }
     
+    // TODO: decide subid vs id
+    // бедомба главная тут (перепутаны id и subId в некоторых местах)
     public Account getAccount(String subId) {
         return accounts.getOrDefault(subId, null);
     }

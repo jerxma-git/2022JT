@@ -10,8 +10,8 @@ public interface Bank extends Remote {
      * @return account with specified identifier or {@code null} if such account does not exist.
      */
 
-    RemotePerson getRemotePerson(String passport) throws RemoteException;
-    LocalPerson getLocalPerson(String passport) throws RemoteException;
+    Person getRemotePerson(String passport) throws RemoteException;
+    Person getLocalPerson(String passport) throws RemoteException;
 
     RemotePerson createPerson(String name, String surname, String passport) throws RemoteException;
 

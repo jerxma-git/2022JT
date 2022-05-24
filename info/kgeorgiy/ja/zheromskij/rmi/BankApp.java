@@ -12,9 +12,6 @@ public class BankApp {
     
     public static void main(String[] args) {
 
-        System.out.println("NIGGER");
-        System.out.println("NIGGER");
-        System.out.println("NIGGER");
         if (args == null || args.length != 5) {
             System.out.println("Args: name surname passport accountID newAmount");
         }
@@ -32,7 +29,7 @@ public class BankApp {
         try {
             Registry registry = LocateRegistry.getRegistry(null, 1099);
             Bank bank = (Bank) registry.lookup("//localhost/bank");
-            RemotePerson person = bank.getRemotePerson(passport);
+            Person person = bank.getRemotePerson(passport);
             if (person == null) {
                 person = bank.createPerson(name, surname, passport);
                 System.out.println("No person with passport " + passport + " was found. Creating a new person");
