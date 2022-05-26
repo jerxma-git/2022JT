@@ -19,10 +19,6 @@ public class RemotePerson extends AbstractPerson {
         return new LocalPerson(name, surname, passport);
     }
 
-    @Override
-    public String toString() {
-        return "accs:" + this.accounts.keySet().stream().collect(Collectors.joining("_"));
-    }
 
 
 

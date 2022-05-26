@@ -1,6 +1,5 @@
 package info.kgeorgiy.ja.zheromskij.rmi;
 
-import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -44,10 +43,12 @@ public class BankApp {
         
         } catch (RemoteException e) {
             System.err.println("Failed to receive the person");
+            e.printStackTrace();
         } catch (NotBoundException e) {
             System.out.println("Bank isn't bound");
+            e.printStackTrace();
         } catch (Exception e) {
-            System.out.println("бедомба жесть");
+            System.out.println("Unknown error:");
             e.printStackTrace();
         }
 
